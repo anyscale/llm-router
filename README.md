@@ -1,38 +1,49 @@
-# Introduction
+# Building an LLM Router for High-Quality and Cost-Effective Responses
 
-When building Large Language Model (LLM) applications, we strive to balance between achieving the highest response quality while adhering to a limited cost budget. Closed models like GPT-4 are renowned for their superior quality, but they can become prohibitively expensive, especially when handling a large volume of queries. On the other hand, Open Source Software (OSS) models are more cost-effective but may not deliver the same quality, particularly for complex or domain-specific queries.
+When developing applications using Large Language Models (LLMs), achieving high-quality responses while maintaining a budget is a key challenge. Closed models like GPT-4 provide superior quality but are costly, especially with a high volume of queries. Conversely, Open Source Software (OSS) models are more economical but may not match the quality, especially for complex or domain-specific queries.
 
-A "smart router" addresses this challenge by processing user queries and deciding whether to route them to a closed LLM or an OSS LLM, depending on the query's complexity or domain. Here’s a schematic representation of a smart router:
+An **LLM Router** helps balance these aspects by deciding which queries are routed to a closed LLM and which to an OSS LLM based on the query's complexity or domain specificity. Below is a schematic representation of an LLM Router:
+
 
 <div style="text-align: center;">
-    <img src="assets/llm-router-flowchart_2.png" alt="Smart Router" width="800"/>
+    <img src="assets/llm-router-flowchart_2.png" alt="LLM Router" width="800"/>
 </div>
 
-Given a set of user queries, a smart router enables generating high-quality LLM responses while minimizing the overall cost.
+Given a set of user queries, an LLM router enables generating high-quality LLM responses while minimizing the overall cost.
 
 # Approach
 
-In this tutorial, we'll demonstrate how to train a smart router on the Anyscale platform. We make the following design choices:
+In this tutorial, we'll demonstrate how to train an LLM router on the Anyscale platform. We make the following design choices:
 
-1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our smart router will route between these two models.
+1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our llm router will route between these two models.
 2. **Response Quality Rating**: We'll quantify the quality of an LLM response on a scale of 1 to 5 stars, with higher scores indicating better quality. For simplicity, we'll assume that GPT-4 always achieves a 5-star rating, so it serves as a reference for Mixtral-8x7B.
-3. **Smart Router Model**: We'll finetune a Llama3-8B model as our smart router and leverage Anyscale's powerful API. Our research (see our [arXiv paper](put link to arxiv paper)) shows that this model offers superior routing performance compared to smaller architectures.
+3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. Our research (see our [arXiv paper](put link to arxiv paper)) shows that this model offers superior routing performance compared to smaller architectures.
 
-More concretely, the objective of a smart router is to direct simple queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%).
+1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our LLM router will route between these two models.
+2. **Response Quality Rating**: We'll quantify the quality of an LLM response on a scale of 1 to 5 stars, with higher scores indicating better quality. For simplicity, we'll assume that GPT-4 always achieves a 5-star rating, so it serves as a reference for Mixtral-8x7B.
+3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. Our research (see our [arXiv paper](put link to arxiv paper)) shows that this model offers superior routing performance compared to smaller architectures, especially when high-quality labeled data is available.
 
 
+More concretely, the objective of an LLM router is to direct "simple" queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%).
 
+We show that it's possible to build LLM routers that achieve outstanding performance. Below are the results from two of our best-performing LLM routers: the Causal LLM, which we'll develop in detail below, and a Matrix Factorization (MF) model, both evaluated on the MT Bench benchmark ([source](https://arxiv.org/pdf/2306.05685)). These models are compared against two public LLM routing systems from Unify AI and NotDiamond. For more details on this result and additional ones, refer to our paper.
+
+<div style="text-align: center;">
+    <img src="assets/indep-benchmark.png" alt="LLM Router" width="400"/>
+</div>
+
+Below we discuss steps that enable anyone to build a strong LLM router, starting with data labeling, model training and evaluation.
 
 
 # Table of Contents
 
-1. [**Prepare Labeled Data**](#generate-labeled-data): We describe how to generate synthetic labeled data to train the smart router model.
+1. [**Prepare Labeled Data**](#generate-labeled-data): The foundation of a robust LLM router is high-quality labeled data. In this section, we'll guide you through preparing this training data.
 
-2. [**Finetune a Router Model**](#finetune-router-model): We show how to train a smart router by finetuning an LLM classifier using Anyscale's finetuning API.
+2. [**Finetune a Router Model**](#finetune-router-model): We demonstrate how to finetune an LLM classifier using Anyscale's finetuning API, transforming it into an effective LLM router.
 
-3. [**Offline Evaluation**](#offline-eval): We run offline evaluation of the model on standard benchmarks.
+3. [**Offline Evaluation**](#offline-eval): Using the public codebase ([RouteLLM](https://github.com/lm-sys/RouteLLM)), we will walk through an offline evaluation of the model on standard benchmarks.
 
-**Time to complete**: 90 minutes including training on 8xA10 GPUs
+**Time to complete**: Approximately 120 minutes, including time to train on a node with 8xA10 GPUs.
 
 
 ### Setup
@@ -53,7 +64,7 @@ load_dotenv("/home/ray/default/.env")
 
 # Step 1: Prepare Labeled Data <a id="generate-labeled-data"></a>
 
-Our smart router essentially functions as a binary classifier, deciding whether to route a query to GPT-4 or Mixtral-8x7B based on the query text. Initially, we considered labeled data in the format `(query, routing_label)`, where `routing_label` is 1 if the query should be routed to Mixtral-8x7B and 0 if it should be routed to GPT-4.
+Our llm router essentially functions as a binary classifier, deciding whether to route a query to GPT-4 or Mixtral-8x7B based on the query text. Initially, we considered labeled data in the format `(query, routing_label)`, where `routing_label` is 1 if the query should be routed to Mixtral-8x7B and 0 if it should be routed to GPT-4.
 
 However, our early experiments revealed that *binary labels do not provide sufficient signal for training a robust router model*. Therefore, we adopted a different labeling approach using a *1-5 scoring system*, which reflects how well Mixtral-8x7B can effectively respond to the user's query. More specifically:
 
@@ -63,12 +74,12 @@ However, our early experiments revealed that *binary labels do not provide suffi
 
 We use labeled samples in the format `(query, score_label)`. The `routing_label` can be derived from the `score_label` by setting a score threshold for quality, i.e. `routing_label = 1 if score_label >= 4 else 0`.
 
-In the following, we will explain how we prepare our labeled dataset in detail.
+we'll dive into the detailed process of preparing our labeled dataset.
 
 
 ## 1.1: Query Dataset
 
-We want our smart router to be effective in open-ended chat domains. So, our first step is to collect a set of generic queries from the [Nectar dataset](https://huggingface.co/datasets/berkeley-nest/Nectar). We chose the Nectar dataset for two reasons: it combines queries from many different domains, including open-ended chat, and it has responses from many models, including over 191K responses from GPT-4.
+We want our router to be effective in open-ended chat domains. So, our first step is to collect a set of generic queries from the [Nectar dataset](https://huggingface.co/datasets/berkeley-nest/Nectar). We chose the Nectar dataset for two reasons: it combines queries from many different domains, including open-ended chat, and it has responses from many models, including over 191K responses from GPT-4.
 
 
 ```python
@@ -488,7 +499,7 @@ display(dataset_df.head())
 
 
 ### Full Dataset
-We have previously generated the full labeled datasets, created a train and validation splits, and published them as a public huggingface dataset `outellm/gpt4_dataset`. Let's load the dataset and explore the score distribution.
+We have previously generated the full labeled datasets, created a train and validation splits, and published them as a public huggingface dataset `routellm/gpt4_dataset`. Let's load the dataset and explore the score distribution.
 
 
 
@@ -498,16 +509,13 @@ from src.utils import visualize_label_distribution
 
 full_dataset_df = load_dataset("routellm/gpt4_dataset")
 train_df = full_dataset_df["train"].to_pandas()
-valid_df = full_dataset_df["validation"].to_pandas()
 
 print(f"Train size: {len(train_df)}")
-print(f"Validation size: {len(valid_df)}")
 display(train_df.head())
 visualize_label_distribution(train_df, key="mixtral_score")
 ```
 
     Train size: 109101
-    Validation size: 10000
 
 
 
@@ -598,9 +606,6 @@ Let us assume that if the score is >= 4, we will route to the OSS model (indicat
 train_df["routing_label"] = train_df["mixtral_score"].apply(
     lambda x: 1 if x >= 4 else 0
 )
-valid_df["routing_label"] = valid_df["mixtral_score"].apply(
-    lambda x: 1 if x >= 4 else 0
-)
 visualize_label_distribution(train_df, key="routing_label")
 ```
 
@@ -612,14 +617,14 @@ visualize_label_distribution(train_df, key="routing_label")
 
 # Step 2: Finetune a router model <a id="finetune-router-model"></a>
 
-In this section, we will explain how to finetune an LLM as a smart router. While our data contains `gpt4_response` and `mixtral_response`, we will only use the pair (`query`, `mixtral_score`) for training. The goal is for the smart router to rely solely on the query text to determine which model to route to. Our approach is straightforward: we train a 5-way classifier to predict the `mixtral_score` from the `query`. At inference time, we will route to Mixtral if our router predicts a high score (i.e., 4-5) and to GPT-4 otherwise.
+In this section, we will explain how to finetune an LLM as a router. While our data contains `gpt4_response` and `mixtral_response`, we will only use the pair (`query`, `mixtral_score`) for training. The goal is for the router to rely solely on the query text to determine which model to route to. Our approach is straightforward: we train a 5-way classifier to predict the `mixtral_score` from the `query`. At inference time, we will route to Mixtral if our router predicts a high score (i.e., 4-5) and to GPT-4 otherwise.
 
 
 ## 2.1 Data Preparation
-We will discuss a few preprocessing steps to prepare the data for finetuning an LLM to be a smart router.
+We will discuss a few preprocessing steps to prepare the data for finetuning an LLM to be a router.
 
 ### Task Instructions
-We use the instruction-following framework to finetune an LLM as a smart router. The task instructions guide the model to predict the score label for a given query. They ensure the model understands the evaluation criteria and can accurately assess the query's complexity and expected response quality.
+We use the instruction-following framework to finetune an LLM as a router. The task instructions guide the model to predict the score label for a given query. They ensure the model understands the evaluation criteria and can accurately assess the query's complexity and expected response quality.
 
 
 ```python
@@ -653,7 +658,6 @@ To finetune the model, we must format the data to be compatible with [Anyscale's
 from src.utils import prepare_ft_messages
 
 train_df["messages"] = prepare_ft_messages(train_df, "mixtral_score")
-valid_df["messages"] = prepare_ft_messages(valid_df, "mixtral_score")
 
 # here's what the API data format looks like:
 display(train_df["messages"].iloc[0])
@@ -677,13 +681,10 @@ For classification tasks, it's recommended to train on label-balanced datasets t
 from src.utils import balance_dataset
 
 balanced_train_df = balance_dataset(train_df, key="routing_label")
-balanced_valid_df = balance_dataset(valid_df, key="routing_label")
 print(f"Train size: {len(balanced_train_df)}")
-print(f"Valid size: {len(balanced_valid_df)}")
 ```
 
     Train size: 29504
-    Valid size: 2706
 
 
 ### Subsample and Store Data
@@ -701,7 +702,7 @@ subsampled_df.to_json(output_file, orient="records", lines=True)
 
 ## 2.2 Fine-tune with Anyscale API
 
-We will run a fine-tuning job using Anyscale's LLM finetuning API as an isolated job, similar to this [tutorial](https://github.com/anyscale/e2e-llm-workflows?tab=readme-ov-file#fine-tuning-1).
+We will run a fine-tuning job using Anyscale's LLM finetuning API as an isolated job, similar to our [end-to-end LLM workflows guide](https://github.com/anyscale/e2e-llm-workflows?tab=readme-ov-file#fine-tuning-1).
 
 For this tutorial, we will perform full-parameter finetuning of Llama3-8B on the same 1,000 samples we showed earlier to debug the training dynamics and ensure the model can fit the training set. Below, we present the training and job configurations before submitting the training job.
 
@@ -834,7 +835,8 @@ image_path = "/home/ray/default/RouteLLM/gsm8k.png"
 display(Image(filename=image_path))
 ```
 
-This plot shows that as we loosen the restriction on cost (i.e. increase % of GPT-4 calls) the performance improves. In Random router it improves linearly, but with our router we can do significantly better.
+This plot illustrates that as we relax the cost constraints (i.e., increase the percentage of GPT-4 calls), the performance improves. While the performance of a random router improves linearly with cost, our router achieves significantly better results at each cost level.
+
     
 ![png](output_47_0.png)
     
