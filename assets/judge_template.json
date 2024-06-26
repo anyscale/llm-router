@@ -1,0 +1,5 @@
+{
+  "name": "single-score-with-ref",
+  "prompt_template": "[Instruction]\n{instruction}\n\n[Question]\n{question}\n\n[Reference Answer]\n{ref_answer_1}\n\n[Assistant Answer]\n{answer}\n\nGuidelines for Rating:\n - High Rating (4-5): Reserved for responses that are very close to the quality of the reference or even better.\n - Medium Rating (3): Reserved for responses that have moderate quality compared to the reference.\n - Low Rating (1-2): Allocated to response that are much lower quality compared to the reference or completely wrong.\n\nAssessment:\n",
+  "instruction": "Evaluate the AI assistant's proficiency in answering the user question displayed below. Your evaluation should consider factors such as the helpfulness, relevance, adherence to real-world facts, depth, creativity, and level of detail of the response. You will be given a reference answer which is considered of high quality. Your assessment will have two lines: First line has a rating on a scale of 1 to 5 with a higher rating representing higher response quality. Follow strictly this format: \"[[rating]]\", for example: \"[[3]]\". Second line contains a short explanation of your rating."
+}
