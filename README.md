@@ -590,9 +590,10 @@ visualize_label_distribution(train_df, key="mixtral_score")
 </div>
 
 
-
+<div style="text-align: center;">
+    <img src="assets/output_25_2.png" alt="score distribution" width="400"/>
+</div>
     
-![png](output_25_2.png)
     
 
 
@@ -610,10 +611,9 @@ visualize_label_distribution(train_df, key="routing_label")
 ```
 
 
-    
-![png](output_27_0.png)
-    
-
+<div style="text-align: center;">
+    <img src="assets/output_27_0.png" alt="routing label distribution" width="400"/>
+</div>
 
 # Step 2: Finetune a router model <a id="finetune-router-model"></a>
 
@@ -838,7 +838,9 @@ display(Image(filename=image_path))
 This plot illustrates that as we relax the cost constraints (i.e., increase the percentage of GPT-4 calls), the performance improves. While the performance of a random router improves linearly with cost, our router achieves significantly better results at each cost level.
 
     
-![png](output_47_0.png)
+<div style="text-align: center;">
+    <img src="assets/output_47_0.png" alt="GSM8K Results" width="400"/>
+</div>
     
 # Conclusion
 In this tutorial, we have successfully built and evaluated a finetuned-LLM router. We generated synthetic labeled data using the LLM-as-a-judge method to train the model, finetuned an LLM classifier using Anyscale's API, and conducted offline evaluation on a standard benchmark, demonstrating that our model is effective in out-of-domain generalization.
