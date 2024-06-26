@@ -29,7 +29,7 @@ More concretely, the objective of an LLM router is to direct "simple" queries to
 We show that it's possible to build LLM routers that achieve outstanding performance. Below are the results from two of our best-performing LLM routers: the Causal LLM, which we'll develop in detail below, and a Matrix Factorization (MF) model, both evaluated on the MT Bench benchmark ([source](https://arxiv.org/pdf/2306.05685)). These models are compared against two public LLM routing systems from Unify AI and NotDiamond. For more details on this result and additional ones, refer to our paper.
 
 <div style="text-align: center;">
-    <img src="assets/indep-benchmark.png" alt="LLM Router" width="400"/>
+    <img src="assets/indep-benchmark.png" alt="LLM Router" width="500"/>
 </div>
 
 Below we discuss steps that enable anyone to build a strong LLM router, starting with data labeling, model training and evaluation.
@@ -839,7 +839,7 @@ This plot illustrates that as we relax the cost constraints (i.e., increase the 
 
     
 <div style="text-align: center;">
-    <img src="assets/output_47_0.png" alt="GSM8K Results" width="400"/>
+    <img src="assets/output_47_0.png" alt="GSM8K Results" width="500"/>
 </div>
     
 # Conclusion
