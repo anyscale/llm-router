@@ -19,10 +19,6 @@ In this tutorial, we'll demonstrate how to train an LLM router on the Anyscale p
 2. **Response Quality Rating**: We'll quantify the quality of an LLM response on a scale of 1 to 5 stars, with higher scores indicating better quality. For simplicity, we'll assume that GPT-4 always achieves a 5-star rating, so it serves as a reference for Mixtral-8x7B.
 3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. Our research (see our [arXiv paper](put link to arxiv paper)) shows that this model offers superior routing performance compared to smaller architectures.
 
-1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our LLM router will route between these two models.
-2. **Response Quality Rating**: We'll quantify the quality of an LLM response on a scale of 1 to 5 stars, with higher scores indicating better quality. For simplicity, we'll assume that GPT-4 always achieves a 5-star rating, so it serves as a reference for Mixtral-8x7B.
-3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. Our research (see our [arXiv paper](put link to arxiv paper)) shows that this model offers superior routing performance compared to smaller architectures, especially when high-quality labeled data is available.
-
 
 More concretely, the objective of an LLM router is to direct "simple" queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%).
 
@@ -725,11 +721,99 @@ Next, we will conduct an offline evaluation of the model trained on an out-of-do
 # Install the package with the specified extras
 !pip install -e .[eval]
 ```
+```
   ...
     Successfully installed routellm-0.0.1
+```
+### Inference Example
+Let's show an example of loading the model and running inference with a single example sampled from our data. Note that you need to get access to `meta-llama/Meta-Llama-3-8B` in order to run these evaluations.
 
+```python
+# Store your `meta-llama` access token in /home/ray/default/.env with the name LLAMA2_HF_TOKEN
+from dotenv import load_dotenv
+load_dotenv("/home/ray/default/.env")
 
-### Running Evaluation
+from pprint import pprint
+from src.offline_inference import single_example_inference
+
+# Sample one row from the DataFrame
+sampled_row = train_df.sample(n=1, random_state=42)
+
+# Convert the sampled row to a dictionary without the index
+input_example = sampled_row.to_dict(orient='records')[0]
+
+print("Prompt:", input_example['prompt'])
+print("Label:", input_example['mixtral_score'])
+print("Messages:")
+pprint(input_example['messages'])
+```
+
+```
+Prompt: What challenges did FDR face while in office
+Label: 5
+Messages:
+[{'content': '[Instruction]\n'
+             'Based on the question provided below, predict the score an '
+             "expert evaluator would give to an AI assistant's response, "
+             'considering its helpfulness, relevance, adherence to facts, '
+             'depth, creativity, and detail. Your prediction should infer the '
+             'level of proficiency needed to address the question effectively. '
+             'Use a scale from 1 to 5, where a higher score indicates a higher '
+             'anticipated quality of response. Provide your prediction as: '
+             '"[[predicted rating]]".\n'
+             '\n'
+             'Score criteria:\n'
+             '- **4-5**: The AI assistant can produce a very strong answer, '
+             'showing deep understanding, creativity, detailed insight, and '
+             'high relevance.\n'
+             '- **3**: The AI assistant can provide an adequate answer with '
+             'moderate detail, relevance, and factual accuracy.\n'
+             '- **1-2**: The AI assistant will struggle to produce a strong '
+             "answer due to the question's difficulty, vagueness, or the "
+             "assistant's limitations.\n",
+  'role': 'system'},
+ {'content': '[Question]\n'
+             'What challenges did FDR face while in office\n'
+             '\n'
+             'Prediction:\n',
+  'role': 'user'},
+ {'content': '[[5]]', 'role': 'assistant'}]
+```
+
+Let's run inference with this example and examine the model's output.
+
+```python
+from src.offline_inference import single_example_inference
+
+result = single_example_inference(input_example)
+pprint(result)
+```
+```
+Loading model checkpoint from routellm/causal_llm_gpt4_augmented ...
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.73it/s]
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+{'binary_prob': 0.9662781,
+ 'output_ids': tensor([128006,  78191, 128007,    271, 128260, 128009]),
+ 'output_str': '<|start_header_id|>assistant<|end_header_id|>\n'
+               '\n'
+               '[[5]]<|eot_id|>',
+ 'output_tokens': ['<|start_header_id|>',
+                   'assistant',
+                   '<|end_header_id|>',
+                   'ĊĊ',
+                   '[[5]]',
+                   '<|eot_id|>'],
+ 'score_logits': array([10.3125, 10.9375, 11.4375, 14.4375, 15.    ], dtype=float32),
+ 'score_pred': 5,
+ 'softmax_scores': array([0.00566901, 0.0105911 , 0.01746178, 0.3507292 , 0.6155489 ],
+      dtype=float32)}
+```
+
+The model outputs the predicted score as a special token`[[5]]`, since it is trained to predict one of the 5 labels which we add as special tokens to the vocabulary. We extract softmax scores of each of 5 labels in `softmax_scores`, and compute the routing probability as `binary_prob = sum(softmax_scores[3:])`.
+
+To optimize inference speed, we can append the header tokens `<|start_header_id|>assistant<|end_header_id|>\n\n`  so the first token that the model outputs is the predicted label.
+
+### Benchmark Evaluation
 We will use the RouteLLM evaluation framework to measure the performance of our router against a random router on GSM8K. 
 We report the percentage of calls the router needs to send to GPT-4 in order to achieve `20%`, `50%` and `80%` of GPT-4 performance, along with area under curve. 
 See our paper for more details on the evalaution metrics.
