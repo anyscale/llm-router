@@ -834,7 +834,7 @@ image_path = "/home/ray/default/RouteLLM/gsm8k.png"
 display(Image(filename=image_path))
 ```
 
-
+This plot shows that as we loosen the restriction on cost (i.e. increase % of GPT-4 calls) the performance improves. In Random router it improves linearly, but with our router we can do significantly better.
     
 ![png](output_47_0.png)
     
