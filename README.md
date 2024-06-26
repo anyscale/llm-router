@@ -818,7 +818,7 @@ See our paper for more details on the evalaution metrics.
     mistralai/Mixtral-8x7B-Instruct-v0.1 63.733741392501905
     gpt-4-1106-preview 85.76893649579189
     Saving plot to ./gsm8k.png
-    
+
     Metrics:
             method 20% qual 50% qual 80% qual        AUC      APGR
     1  causal_llm   11.75%   34.06%   62.38%  77.540277  0.626567
@@ -838,9 +838,5 @@ display(Image(filename=image_path))
     
 ![png](output_47_0.png)
     
-
-
-
-```python
-
-```
+# Conclusion
+In this tutorial, we have successfully built and evaluated a finetuned-LLM router. We generated synthetic labeled data using the LLM-as-a-judge method to train the model, finetuned an LLM classifier using Anyscale's API, and conducted offline evaluation on a standard benchmark, demonstrating that our model is effective in out-of-domain generalization.
