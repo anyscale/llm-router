@@ -50,8 +50,6 @@ Below we discuss steps that enable anyone to build a strong LLM router, starting
 
 
 ```python
-import os
-
 # Install required packages
 !pip install -r requirements.txt
 
@@ -689,8 +687,6 @@ For this tutorial, we will perform full-parameter finetuning of Llama3-8B on the
 
 
 ```python
-import os
-
 # Job submission
 !anyscale job submit --config-file configs/ft_job.yaml --exclude assets
 ```
