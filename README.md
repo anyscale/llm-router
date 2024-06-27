@@ -1,11 +1,12 @@
 # Building an LLM Router for High-Quality and Cost-Effective Responses
 
-# TLDR
+## TLDR
 1. We introduce a state-of-the-art LLM Router, a model that dynamically directs queries to either high-quality closed LLMs or cost-effective open-source LLMs based on the complexity and domain specificity of the query, optimizing both response quality and cost.
 
 2. This tutorial provides an in-depth guide on building our LLM Router, from generating labeled data, to finetuning an LLM as a router with Anyscale's API, and finally running offline evaluations.
 
 3. In collaboration with Berkeley LMSys group, we release an [arXiv paper](put link to arxiv paper) presenting extensive evaluations on standard benchmarks, demonstrating that our LLM router can significantly reduce costs—by over two times in certain cases—without compromising quality.
+
 
 # Background
 
