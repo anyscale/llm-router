@@ -1,8 +1,5 @@
 from routellm.routers.causal_llm.configs import RouterModelConfig
-from routellm.routers.causal_llm.llm_utils import (
-    load_prompt_format,
-    to_openai_api_messages,
-)
+from routellm.routers.causal_llm.llm_utils import load_prompt_format
 from routellm.routers.causal_llm.model import CausalLLMClassifier
 
 
