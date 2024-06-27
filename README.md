@@ -5,7 +5,8 @@
 
 2. This tutorial provides an in-depth guide on building our LLM Router, from generating labeled data, to finetuning an LLM as a router with Anyscale's API, and finally running offline evaluations.
 
-3. In collaboration with Berkeley & LMSYS group, we release an [arXiv paper](put link to arxiv paper) presenting extensive evaluations on standard benchmarks, demonstrating that our LLM routers can significantly reduce costs—by over 2x in some cases—without compromising quality.
+3. In collaboration with the Berkeley-LMSys group, we release an [arXiv paper](put link to arxiv paper) presenting extensive evaluations on standard benchmarks. We achieve the same performance as our baselines with up to a 70% cost reduction for MT Bench, a 30% cost reduction for MMLU, and a 40% cost reduction for GSM8K.
+
 
 
 # Background
