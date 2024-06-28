@@ -1,15 +1,17 @@
 # Building an LLM Router for High-Quality and Cost-Effective Responses
 
+# Building an LLM Router for High-Quality and Cost-Effective Responses
+
 ## TLDR
 1. We introduce a state-of-the-art LLM Router, a model that dynamically directs queries to either high-quality closed LLMs or cost-effective open-source LLMs based on the complexity and domain specificity of the query, optimizing both response quality and cost.
 
 2. This tutorial provides an in-depth guide on building our LLM Router, from generating labeled data, to finetuning an LLM as a router with Anyscale's API, and finally running offline evaluations.
 
-3. In collaboration with the Berkeley-LMSys group, we release an [arXiv paper](put link to arxiv paper) presenting extensive evaluations on standard benchmarks. We achieve the same performance as our baselines with up to a 70% cost reduction for MT Bench, a 30% cost reduction for MMLU, and a 40% cost reduction for GSM8K.
-
+3. In collaboration with the Berkeley-LMSys group, we release an [arXiv paper](https://arxiv.org/pdf/2406.18665) presenting extensive evaluations on standard benchmarks. We achieve the same performance as our baselines with up to a 70% cost reduction for MT Bench, a 30% cost reduction for MMLU, and a 40% cost reduction for GSM8K.
 
 
 # Background
+When developing applications using Large Language Models (LLMs), achieving high-quality responses while maintaining a budget is a key challenge. Closed models like GPT-4 provide superior quality but are costly, especially with a high volume of queries. Conversely, Open Source Software (OSS) models are more economical but may not match the quality, especially for complex or domain-specific queries.
 
 An **LLM Router** helps balance these aspects by deciding which queries are routed to a closed LLM and which to an OSS LLM based on the query's complexity or domain specificity. Below is a schematic representation of an LLM Router:
 
@@ -26,12 +28,11 @@ In this tutorial, we'll demonstrate how to train an LLM router on the Anyscale p
 
 1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our llm router will route between these two models.
 2. **Response Quality Rating**: We'll quantify the quality of an LLM response on a scale of 1 to 5 stars, with higher scores indicating better quality. For simplicity, we'll assume that GPT-4 always achieves a 5-star rating, so it serves as a reference for Mixtral-8x7B.
-3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. Our research (see our [arXiv paper](put link to arxiv paper)) shows that this model offers superior routing performance compared to smaller architectures.
-  
+3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. [Our research](https://arxiv.org/pdf/2406.18665) shows that this model offers superior routing performance compared to smaller architectures.
 
-More concretely, the objective of an LLM router is to direct "simple" queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%).
+More concretely, the objective of an LLM router is to direct "simple" queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%). 
 
-We show that it's possible to build LLM routers that achieve outstanding performance. Below are results from our best-performing LLM routers, the Causal LLM and a Matrix Factorization (MF) model, evaluated on the MT Bench benchmark ([source](https://arxiv.org/pdf/2306.05685)), which demonstrate that our routers can achieve higher quality with lower costs (i.e., fewer calls to GPT-4) compared to the random baseline and public LLM routing systems from Unify AI and NotDiamond. For more details on these results and additional ones, refer to our paper.
+We show that it's possible to build LLM routers that achieve outstanding performance. Below are results from our best-performing LLM routers, the Causal LLM and a Matrix Factorization (MF) model, evaluated on the ([MT Bench benchmark](https://arxiv.org/pdf/2306.05685)), which demonstrate that our routers can achieve higher quality with lower costs (i.e., fewer calls to GPT-4) compared to the random baseline and public LLM routing systems from Unify AI and NotDiamond. For more details on these results and additional ones, refer to our paper.
 
 <div style="text-align: center;">
     <img src="assets/indep-benchmark.png" alt="LLM Router" width="500"/>
@@ -825,7 +826,7 @@ To optimize inference speed, we can append the header tokens `<|start_header_id|
 ### Benchmark Evaluation
 We will use the RouteLLM evaluation framework to measure the performance of our router against a random router on GSM8K. 
 We report the percentage of calls the router needs to send to GPT-4 in order to achieve `20%`, `50%` and `80%` of GPT-4 performance, along with area under curve. 
-See our paper for more details on the evalaution metrics.
+See our [paper](https://arxiv.org/pdf/2406.18665) for more details on the evalaution metrics.
 
 
 ```python
