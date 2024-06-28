@@ -1,7 +1,5 @@
 # Building an LLM Router for High-Quality and Cost-Effective Responses
 
-# Building an LLM Router for High-Quality and Cost-Effective Responses
-
 ## TLDR
 1. We introduce a state-of-the-art LLM Router, a model that dynamically directs queries to either high-quality closed LLMs or cost-effective open-source LLMs based on the complexity and domain specificity of the query, optimizing both response quality and cost.
 
