@@ -1,7 +1,7 @@
 # Building an LLM Router for High-Quality and Cost-Effective Responses
 
-### TLDR
-1. We introduce a framework training state-of-the-art *LLM routers*, systems that dynamically directs queries to either high-quality closed LLMs or cost-effective open-source LLMs, based on the query complexity, and optimizing both response quality and cost.
+## TLDR
+1. We introduce a framework for training state-of-the-art *LLM routers*, systems that dynamically direct queries to either high-quality closed LLMs or cost-effective open-source LLMs, based on query complexity, optimizing both response quality and cost.
 
 2. This tutorial provides an in-depth guide on building an LLM router *based on a causal-LLM classifier*, starting with generating labeled data, finetuning an LLM-based classifier with Anyscale's API, and finally running offline evaluations.
 
@@ -35,6 +35,7 @@ We show that it's possible to build LLM routers that achieve outstanding perform
 </div>
 
 In the following sections, we discuss the steps that enable anyone to build a strong LLM router.
+
 
 
 # Table of Contents
@@ -358,7 +359,7 @@ dataset_df = generate_llm_judge_labels(dataset_df, os.getenv('OPENAI_API_KEY'))
 ```
 
     Starting batch inference on 30 queries...
-    
+
     # queries un-processed: 29, in-progress: 1, ready: 0
     # queries un-processed: 28, in-progress: 2, ready: 0
     # queries un-processed: 27, in-progress: 3, ready: 0
