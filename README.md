@@ -1,18 +1,16 @@
 # Building an LLM Router for High-Quality and Cost-Effective Responses
 
-## TLDR
-1. We introduce a state-of-the-art LLM Router, a model that dynamically directs queries to either high-quality closed LLMs or cost-effective open-source LLMs based on the complexity and domain specificity of the query, optimizing both response quality and cost.
+### TLDR
+1. We introduce a framework training state-of-the-art *LLM routers*, systems that dynamically directs queries to either high-quality closed LLMs or cost-effective open-source LLMs, based on the query complexity, and optimizing both response quality and cost.
 
-2. This tutorial provides an in-depth guide on building our LLM Router, from generating labeled data, to finetuning an LLM as a router with Anyscale's API, and finally running offline evaluations.
+2. This tutorial provides an in-depth guide on building an LLM router *based on a causal-LLM classifier*, starting with generating labeled data, finetuning an LLM-based classifier with Anyscale's API, and finally running offline evaluations.
 
-3. In collaboration with the Berkeley-LMSys group, we release an [arXiv paper](https://arxiv.org/pdf/2406.18665) presenting extensive evaluations on standard benchmarks. We achieve the same performance as our baselines with up to a 70% cost reduction for MT Bench, a 30% cost reduction for MMLU, and a 40% cost reduction for GSM8K.
-
+3. In collaboration with the Berkeley LMSys group, we release an [arXiv paper](https://arxiv.org/pdf/2406.18665) presenting extensive evaluations of this model along with other models. Overall, our LLM Routers can achieve the same performance as our baselines with up to a 70% cost reduction on MT Bench, a 30% cost reduction on MMLU, and a 40% cost reduction on GSM8K.
 
 # Background
 When developing applications using Large Language Models (LLMs), achieving high-quality responses while maintaining a budget is a key challenge. Closed models like GPT-4 provide superior quality but are costly, especially with a high volume of queries. Conversely, Open Source Software (OSS) models are more economical but may not match the quality, especially for complex or domain-specific queries.
 
 An **LLM Router** helps balance these aspects by deciding which queries are routed to a closed LLM and which to an OSS LLM based on the query's complexity or domain specificity. Below is a schematic representation of an LLM Router:
-
 
 <div style="text-align: center;">
     <img src="assets/llm-router-flowchart_2.png" alt="LLM Router" width="800"/>
@@ -22,32 +20,33 @@ Given a set of user queries, an LLM router enables generating high-quality LLM r
 
 # Approach
 
-In this tutorial, we'll demonstrate how to train an LLM router on the Anyscale platform. We make the following design choices:
+In this tutorial, we'll demonstrate how to train a *causal-LLM classifier* on the Anyscale platform as an effective LLM router. We make the following design choices:
 
-1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our llm router will route between these two models.
+1. **Model Choices**: We’ll use GPT-4 as an example of a closed LLM and Mixtral-8x7B as the OSS LLM, so our causal LLM classifier will route between these two models.
 2. **Response Quality Rating**: We'll quantify the quality of an LLM response on a scale of 1 to 5 stars, with higher scores indicating better quality. For simplicity, we'll assume that GPT-4 always achieves a 5-star rating, so it serves as a reference for Mixtral-8x7B.
-3. **LLM Router Model**: We'll finetune a Llama3-8B model as our LLM router and leverage Anyscale's powerful API. [Our research](https://arxiv.org/pdf/2406.18665) shows that this model offers superior routing performance compared to smaller architectures.
+3. **Causal LLM Classifier**: We'll finetune a Llama3-8B model as our causal LLM classifier and leverage Anyscale's powerful API. [Our research](https://arxiv.org/pdf/2406.18665) shows that this model offers superior routing performance compared to smaller architectures.
 
-More concretely, the objective of an LLM router is to direct "simple" queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%). 
+More concretely, the objective of the causal LLM classifier is to direct "simple" queries to Mixtral-8x7B, thereby maintaining high overall response quality (e.g., an average score of 4.8/5) while significantly reducing costs (e.g., by 50%).
 
-We show that it's possible to build LLM routers that achieve outstanding performance. Below are results from our best-performing LLM routers, the Causal LLM and a Matrix Factorization (MF) model, evaluated on the ([MT Bench benchmark](https://arxiv.org/pdf/2306.05685)), which demonstrate that our routers can achieve higher quality with lower costs (i.e., fewer calls to GPT-4) compared to the random baseline and public LLM routing systems from Unify AI and NotDiamond. For more details on these results and additional ones, refer to our paper.
+We show that it's possible to build LLM routers that achieve outstanding performance. Below are results from our best-performing LLM routers, the Causal LLM and a Matrix Factorization (MF) model, evaluated on the [MT Bench benchmark](https://arxiv.org/pdf/2306.05685), which demonstrate that our routers can achieve higher quality with lower costs (i.e., fewer calls to GPT-4) compared to the random baseline and public LLM routing systems from Unify AI and NotDiamond. For more details on these results and additional ones, refer to our paper.
 
 <div style="text-align: center;">
     <img src="assets/indep-benchmark.png" alt="LLM Router" width="500"/>
 </div>
 
-In the following sections, we discuss the steps that enable anyone to build a strong LLM router, starting with data labeling, model training, and evaluation.
+In the following sections, we discuss the steps that enable anyone to build a strong LLM router.
 
 
 # Table of Contents
 
 1. [**Prepare Labeled Data**](#generate-labeled-data): The foundation of a robust LLM router is high-quality labeled data. In this section, we'll guide you through preparing this training data.
 
-2. [**Finetune a Router Model**](#finetune-router-model): We demonstrate how to finetune an LLM classifier using Anyscale's finetuning API, transforming it into an effective LLM router.
+2. [**Finetune a Router Model**](#finetune-router-model): We demonstrate how to finetune a causal-LLM classifier using Anyscale's finetuning API, transforming it into an effective LLM router.
 
-3. [**Offline Evaluation**](#offline-eval): Using the public codebase ([RouteLLM](https://github.com/lm-sys/RouteLLM)), we will walk through an offline evaluation of the model on standard benchmarks.
+3. [**Offline Evaluation**](#offline-eval): Using the public codebase ([RouteLLM](https://github.com/lm-sys/RouteLLM)), we will walk through an offline evaluation on standard benchmarks.
 
 **Time to complete**: Approximately 120 minutes, including time to train on a node with 8xA10 GPUs.
+
 
 
 ### Setup
@@ -63,10 +62,9 @@ load_dotenv("/home/ray/default/.env")
 
 ```
 
-
 # Step 1: Prepare Labeled Data <a id="generate-labeled-data"></a>
 
-Our llm router essentially functions as a binary classifier, deciding whether to route a query to GPT-4 or Mixtral-8x7B based on the query text. Initially, we considered labeled data in the format `(query, routing_label)`, where `routing_label` is 1 if the query should be routed to Mixtral-8x7B and 0 if it should be routed to GPT-4.
+The llm router essentially functions as a binary classifier, deciding whether to route a query to GPT-4 or Mixtral-8x7B based on the query text. Initially, we considered labeled data in the format `(query, routing_label)`, where `routing_label` is 1 if the query should be routed to Mixtral-8x7B and 0 if it should be routed to GPT-4.
 
 However, our early experiments revealed that *binary labels do not provide sufficient signal for training a robust router model*. Therefore, we adopted a different labeling approach using a *1-5 scoring system*, which reflects how well Mixtral-8x7B can effectively respond to the user's query. More specifically:
 
@@ -76,12 +74,12 @@ However, our early experiments revealed that *binary labels do not provide suffi
 
 We use labeled samples in the format `(query, score_label)`. The `routing_label` can be derived from the `score_label` by setting a score threshold for quality, i.e. `routing_label = 1 if score_label >= 4 else 0`.
 
-we'll dive into the detailed process of preparing our labeled dataset.
+Next, we'll dive into the detailed process of preparing our labeled dataset.
 
 
 ## 1.1: Query Dataset
 
-We want our router to be effective in open-ended chat domains. So, our first step is to collect a set of generic queries from the [Nectar dataset](https://huggingface.co/datasets/berkeley-nest/Nectar). We chose the Nectar dataset for two reasons: it combines queries from many different domains, including open-ended chat, and it has responses from many models, including over 191K responses from GPT-4.
+We want our llm router to be effective in open-ended chat domains. So, our first step is to collect a set of generic queries from the [Nectar dataset](https://huggingface.co/datasets/berkeley-nest/Nectar). We chose the Nectar dataset for two reasons: it combines queries from many different domains, including open-ended chat, and it has responses from many models, including over 191K responses from GPT-4.
 
 
 ```python
@@ -136,7 +134,7 @@ Therefore, x = 500.', 'model': 'mistral-7b-instruct-v0.1', 'rank': 7.0}<br>]</td
 
 ## 1.2 Data Preprocessing
 
-We will use a subset of the Nectar data that includes responses from GPT-4, as these will be used to generate scores (as shown below). We will process this data by focusing on single-turn conversations, filtering for good-natured interactions, and cleaning up the prompts and responses to maintain high quality. Additionally, we will sample a small subset from the dataset for the purpose of this tutorial; however, you can skip sampling to work with the full dataset.
+We will use a subset of the Nectar data that includes responses from GPT-4, as these will be used to generate scores (as seen below). We will process this data by focusing on single-turn conversations, filtering for good-natured interactions, and cleaning up the prompts and responses to maintain high quality. Additionally, we will sample a small subset from the dataset for the purpose of this tutorial; however, you can skip sampling to work with the full dataset.
 
 
 ```python
@@ -211,13 +209,13 @@ We don't have human labels for scores, so we will use the [LLM-as-a-Judge approa
 
 There are two main steps in this process:
 1. **Generate Mixtral-8x7B responses for all queries**: We will use an online batch-inference method utilizing Ray and Anyscale endpoints.
-2. **Generate LLM-as-a-Judge labels**: We will ask GPT-4 to evaluate the Mixtral responses against its own reference answers and provide a score from 1 to 5.
+2. **Generate LLM-as-a-Judge labels**: We will ask GPT-4 to evaluate the Mixtral responses against its own reference answers and provide a score from 1-5.
 
 ### Generate Mixtral-8x7B Responses
 
 
 ```python
-import yaml
+import os
 from src.online_inference import generate_mixtral_responses
 
 dataset_df = generate_mixtral_responses(
@@ -251,8 +249,7 @@ dataset_df = generate_mixtral_responses(
     # queries un-processed: 7, in-progress: 18, ready: 1
     # queries un-processed: 6, in-progress: 19, ready: 0
     ...
-    Done in 21.47sec.
-
+    Done in 19.21sec.
 
 ### Dataset overview with Mixtral responses
 
@@ -280,7 +277,7 @@ display(dataset_df.head())
       <td>Based on the features mentioned, which hotel d...</td>
       <td>[evol_instruct]</td>
       <td>Based on the features mentioned, Hotel A seems...</td>
-      <td>Based on the information provided, I would su...</td>
+      <td>Based on the information provided, I would sa...</td>
     </tr>
     <tr>
       <th>113830</th>
@@ -294,7 +291,7 @@ display(dataset_df.head())
       <td>What are the 10 largest cities in the US by po...</td>
       <td>[lmsys-chat-1m]</td>
       <td>As of the most recent data available, the 10 l...</td>
-      <td>Here are the 10 largest cities in the U.S. by...</td>
+      <td>Sure, I'd be happy to help with that! Here ar...</td>
     </tr>
     <tr>
       <th>169249</th>
@@ -308,7 +305,7 @@ display(dataset_df.head())
       <td>Q: You are provided with an "Event", "Intent" ...</td>
       <td>[flan_v2_niv2]</td>
       <td>PersonX might feel satisfied or content using ...</td>
-      <td>PersonX likely feels comfortable and focused,...</td>
+      <td>PersonX probably feels comfortable and focuse...</td>
     </tr>
   </tbody>
 </table>
@@ -339,7 +336,7 @@ inspect_llm_judge_queries(dataset_df)
     Confidence: 85%
     
     [Assistant Answer]
-     PersonX likely feels comfortable and focused, as they are using their preferred writing implement in class. This may help them engage more effectively with the material being taught.
+     PersonX probably feels comfortable and focused in class, as they are using their preferred writing implement. This may help them engage more effectively with the material being taught.
     
     Guidelines for Rating:
      - High Rating (4-5): Reserved for responses that are very close to the quality of the reference or even better.
@@ -354,13 +351,14 @@ Now, we apply a similar online batch-inference method to generate our labels.
 
 
 ```python
-import yaml
+import os
 from src.online_inference import generate_llm_judge_labels
 
 dataset_df = generate_llm_judge_labels(dataset_df, os.getenv('OPENAI_API_KEY'))
 ```
 
     Starting batch inference on 30 queries...
+    
     # queries un-processed: 29, in-progress: 1, ready: 0
     # queries un-processed: 28, in-progress: 2, ready: 0
     # queries un-processed: 27, in-progress: 3, ready: 0
@@ -408,7 +406,7 @@ display(dataset_df.head())
       <td>Based on the features mentioned, which hotel d...</td>
       <td>[evol_instruct]</td>
       <td>Based on the features mentioned, Hotel A seems...</td>
-      <td>Based on the information provided, I would su...</td>
+      <td>Based on the information provided, I would sa...</td>
       <td>5</td>
     </tr>
     <tr>
@@ -417,14 +415,14 @@ display(dataset_df.head())
       <td>[ultrachat]</td>
       <td>Sure, here's a simple step-by-step guide on ho...</td>
       <td>Sure, I'd be happy to help you make a homemad...</td>
-      <td>4</td>
+      <td>3</td>
     </tr>
     <tr>
       <th>138869</th>
       <td>What are the 10 largest cities in the US by po...</td>
       <td>[lmsys-chat-1m]</td>
       <td>As of the most recent data available, the 10 l...</td>
-      <td>Here are the 10 largest cities in the U.S. by...</td>
+      <td>Sure, I'd be happy to help with that! Here ar...</td>
       <td>5</td>
     </tr>
     <tr>
@@ -440,7 +438,7 @@ display(dataset_df.head())
       <td>Q: You are provided with an "Event", "Intent" ...</td>
       <td>[flan_v2_niv2]</td>
       <td>PersonX might feel satisfied or content using ...</td>
-      <td>PersonX likely feels comfortable and focused,...</td>
+      <td>PersonX probably feels comfortable and focuse...</td>
       <td>5</td>
     </tr>
   </tbody>
@@ -528,10 +526,9 @@ visualize_label_distribution(train_df, key="mixtral_score")
 
 
 <div style="text-align: center;">
-    <img src="assets/output_25_2.png" alt="score distribution" width="400"/>
+    <img src="assets/output_24_2.png" alt="score distribution" width="400"/>
 </div>
-    
-    
+     
 
 
 Higher counts for 4-5 scores indicate that Mixtral-8x7B consistently produces high-quality responses, demonstrating its competitive performance compared to the June 2023 version of GPT-4, whose responses are logged in the Nectar dataset.
@@ -544,21 +541,23 @@ Let us assume that if the score is >= 4, we will route to the OSS model (indicat
 train_df["routing_label"] = train_df["mixtral_score"].apply(
     lambda x: 1 if x >= 4 else 0
 )
+
 visualize_label_distribution(train_df, key="routing_label")
 ```
 
 
 <div style="text-align: center;">
-    <img src="assets/output_27_0.png" alt="routing label distribution" width="400"/>
+    <img src="assets/output_26_0.png" alt="routing label distribution" width="400"/>
 </div>
+
 
 # Step 2: Finetune a router model <a id="finetune-router-model"></a>
 
-In this section, we will explain how to finetune an LLM as a router. While our data contains `gpt4_response` and `mixtral_response`, we will only use the pair (`query`, `mixtral_score`) for training. The goal is for the router to rely solely on the query text to determine which model to route to. Our approach is straightforward: we train a 5-way classifier to predict the `mixtral_score` from the `query`. At inference time, we will route to Mixtral if our router predicts a high score (i.e., 4-5) and to GPT-4 otherwise.
+In this section, we will explain how to finetune a causal LLM classifier to be an effective router. While our data contains `gpt4_response` and `mixtral_response`, we will only use the pair (`query`, `mixtral_score`) for training. The goal is for the router to rely solely on the query text to determine which model to route to. Our approach is straightforward: we train a 5-way classifier to predict the `mixtral_score` from the `query`. At inference time, we will route to Mixtral if our router predicts a high score (i.e., 4-5) and to GPT-4 otherwise.
 
 
 ## 2.1 Data Preparation
-We will discuss a few preprocessing steps to prepare the data for finetuning an LLM to be a router.
+We will discuss a few preprocessing steps to prepare the data for finetuning an LLM classifier.
 
 ### Task Instructions
 We use the instruction-following framework to finetune an LLM as a router. The task instructions guide the model to predict the score label for a given query. They ensure the model understands the evaluation criteria and can accurately assess the query's complexity and expected response quality.
@@ -618,6 +617,7 @@ For classification tasks, it's recommended to train on label-balanced datasets t
 from src.utils import balance_dataset
 
 balanced_train_df = balance_dataset(train_df, key="routing_label")
+
 print(f"Train size: {len(balanced_train_df)}")
 ```
 
@@ -657,8 +657,8 @@ For this tutorial, we will perform full-parameter finetuning of Llama3-8B on the
     num_devices: 8
     num_epochs: 5
     checkpoint_every_n_epochs: 5
-    train_batch_size_per_device: 8
-    eval_batch_size_per_device: 8
+    train_batch_size_per_device: 4
+    eval_batch_size_per_device: 4
     lr_scheduler_type: constant
     learning_rate: 1e-5
     num_checkpoints_to_keep: 1
@@ -681,27 +681,27 @@ For this tutorial, we will perform full-parameter finetuning of Llama3-8B on the
 # View job yaml config
 !cat configs/ft_job.yaml
 ```
-
+```
     name: llm-router-tutorial
     entrypoint: python src/ft.py configs/ft_config_a10.yaml
     image_uri: localhost:5555/anyscale/llm-forge:0.5.0.0
     requirements: requirements.txt
     max_retries: 0
-
+```
 
 
 ```python
 # Job submission
 !anyscale job submit --config-file configs/ft_job.yaml --exclude assets
 ```
-
+```
     Output
     (anyscale +1.0s) Submitting job with config JobConfig(name='llm-router-tutorial', image_uri='localhost:5555/anyscale/llm-forge:0.5.0.0', compute_config=None, env_vars=None, py_modules=None, cloud=None, project=None, ray_version=None).
     (anyscale +2.5s) Uploading local dir '.' to cloud storage.
     (anyscale +3.5s) Job 'llm-router-tutorial' submitted, ID: 'prodjob_16krca7sgdjyeh2eyf81h6q9uf'.
     (anyscale +3.5s) View the job in the UI: https://console.anyscale.com/jobs/prodjob_16krca7sgdjyeh2eyf81h6q9uf
     (anyscale +3.5s) Use `--wait` to wait for the job to run and stream logs.
-
+```
 The job takes around 10 minutes on `4xA100-80gb` and 1 hour on `8xA10-22gb` to finish. Training logs will show the final model checkpoint, e.g.:
 
 ```
@@ -734,7 +734,8 @@ Next, we will conduct an offline evaluation of the model trained on an out-of-do
     Successfully installed routellm-0.0.1
 ```
 ### Inference Example
-Let's show an example of loading the model and running inference with a single example sampled from our data. Note that you need to get access to `meta-llama/Meta-Llama-3-8B` in order to run these evaluations.
+Let's show an example of loading the model and running inference with a single example sampled from our data. Note that you need to get access to `meta-llama/Meta-Llama-3-8B` in order to run these evaluations.  Let's first show how a formatted input looks like.
+
 
 ```python
 # Store your `meta-llama` access token in /home/ray/default/.env with the name LLAMA2_HF_TOKEN
@@ -742,7 +743,6 @@ from dotenv import load_dotenv
 load_dotenv("/home/ray/default/.env")
 
 from pprint import pprint
-from src.offline_inference import single_example_inference
 
 # Sample one row from the DataFrame
 sampled_row = train_df.sample(n=1, random_state=42)
@@ -755,40 +755,40 @@ print("Label:", input_example['mixtral_score'])
 print("Messages:")
 pprint(input_example['messages'])
 ```
-
 ```
-Prompt: What challenges did FDR face while in office
-Label: 5
-Messages:
-[{'content': '[Instruction]\n'
-             'Based on the question provided below, predict the score an '
-             "expert evaluator would give to an AI assistant's response, "
-             'considering its helpfulness, relevance, adherence to facts, '
-             'depth, creativity, and detail. Your prediction should infer the '
-             'level of proficiency needed to address the question effectively. '
-             'Use a scale from 1 to 5, where a higher score indicates a higher '
-             'anticipated quality of response. Provide your prediction as: '
-             '"[[predicted rating]]".\n'
-             '\n'
-             'Score criteria:\n'
-             '- **4-5**: The AI assistant can produce a very strong answer, '
-             'showing deep understanding, creativity, detailed insight, and '
-             'high relevance.\n'
-             '- **3**: The AI assistant can provide an adequate answer with '
-             'moderate detail, relevance, and factual accuracy.\n'
-             '- **1-2**: The AI assistant will struggle to produce a strong '
-             "answer due to the question's difficulty, vagueness, or the "
-             "assistant's limitations.\n",
-  'role': 'system'},
- {'content': '[Question]\n'
-             'What challenges did FDR face while in office\n'
-             '\n'
-             'Prediction:\n',
-  'role': 'user'},
- {'content': '[[5]]', 'role': 'assistant'}]
+    Prompt: What challenges did FDR face while in office
+    Label: 5
+    Messages:
+    [{'content': '[Instruction]\n'
+                 'Based on the question provided below, predict the score an '
+                 "expert evaluator would give to an AI assistant's response, "
+                 'considering its helpfulness, relevance, adherence to facts, '
+                 'depth, creativity, and detail. Your prediction should infer the '
+                 'level of proficiency needed to address the question effectively. '
+                 'Use a scale from 1 to 5, where a higher score indicates a higher '
+                 'anticipated quality of response. Provide your prediction as: '
+                 '"[[predicted rating]]".\n'
+                 '\n'
+                 'Score criteria:\n'
+                 '- **4-5**: The AI assistant can produce a very strong answer, '
+                 'showing deep understanding, creativity, detailed insight, and '
+                 'high relevance.\n'
+                 '- **3**: The AI assistant can provide an adequate answer with '
+                 'moderate detail, relevance, and factual accuracy.\n'
+                 '- **1-2**: The AI assistant will struggle to produce a strong '
+                 "answer due to the question's difficulty, vagueness, or the "
+                 "assistant's limitations.\n",
+      'role': 'system'},
+     {'content': '[Question]\n'
+                 'What challenges did FDR face while in office\n'
+                 '\n'
+                 'Prediction:\n',
+      'role': 'user'},
+     {'content': '[[5]]', 'role': 'assistant'}]
 ```
 
 Let's run inference with this example and examine the model's output.
+
 
 ```python
 from src.offline_inference import single_example_inference
@@ -796,26 +796,31 @@ from src.offline_inference import single_example_inference
 result = single_example_inference(input_example)
 pprint(result)
 ```
-```
-Loading model checkpoint from routellm/causal_llm_gpt4_augmented ...
-Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.73it/s]
-Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
-{'binary_prob': 0.9662781,
- 'output_ids': tensor([128006,  78191, 128007,    271, 128260, 128009]),
- 'output_str': '<|start_header_id|>assistant<|end_header_id|>\n'
-               '\n'
-               '[[5]]<|eot_id|>',
- 'output_tokens': ['<|start_header_id|>',
-                   'assistant',
-                   '<|end_header_id|>',
-                   'ĊĊ',
-                   '[[5]]',
-                   '<|eot_id|>'],
- 'score_logits': array([10.3125, 10.9375, 11.4375, 14.4375, 15.    ], dtype=float32),
- 'score_pred': 5,
- 'softmax_scores': array([0.00566901, 0.0105911 , 0.01746178, 0.3507292 , 0.6155489 ],
-      dtype=float32)}
-```
+
+    Loading model checkpoint from routellm/causal_llm_gpt4_augmented ...
+
+
+    Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.76it/s]
+    Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+
+
+    Done loading model in 5.628355264663696 seconds.
+    {'binary_prob': 0.9662781,
+     'output_ids': tensor([128006,  78191, 128007,    271, 128260, 128009]),
+     'output_str': '<|start_header_id|>assistant<|end_header_id|>\n'
+                   '\n'
+                   '[[5]]<|eot_id|>',
+     'output_tokens': ['<|start_header_id|>',
+                       'assistant',
+                       '<|end_header_id|>',
+                       'ĊĊ',
+                       '[[5]]',
+                       '<|eot_id|>'],
+     'score_logits': array([10.3125, 10.9375, 11.4375, 14.4375, 15.    ], dtype=float32),
+     'score_pred': 5,
+     'softmax_scores': array([0.00566901, 0.0105911 , 0.01746178, 0.3507292 , 0.6155489 ],
+          dtype=float32)}
+
 
 The model outputs the predicted score as a special token`[[5]]`, since it is trained to predict one of the 5 labels which we add as special tokens to the vocabulary. We extract softmax scores of each of 5 labels in `softmax_scores`, and compute the routing probability as `binary_prob = sum(softmax_scores[3:])`.
 
@@ -858,12 +863,14 @@ image_path = "/home/ray/default/RouteLLM/gsm8k.png"
 display(Image(filename=image_path))
 ```
 
-This plot illustrates that as we relax the cost constraints (i.e., increase the percentage of GPT-4 calls), the performance improves. While the performance of a random router improves linearly with cost, our router achieves significantly better results at each cost level.
+<div style="text-align: center;">
+    <img src="assets/output_51_0.png" alt="GSM8K Results" width="500"/>
+</div>
 
     
-<div style="text-align: center;">
-    <img src="assets/output_47_0.png" alt="GSM8K Results" width="500"/>
-</div>
-    
+
+
+This plot illustrates that as we relax the cost constraints (i.e., increase the percentage of GPT-4 calls), the performance improves. While the performance of a random router improves linearly with cost, our router achieves significantly better results at each cost level.
+
 # Conclusion
-In this tutorial, we have successfully built and evaluated a finetuned-LLM router. We generated synthetic labeled data using the LLM-as-a-judge method to train the model, finetuned an LLM classifier using Anyscale's API, and conducted offline evaluation on a standard benchmark, demonstrating that our model is effective in out-of-domain generalization.
+In this tutorial, we have successfully built and evaluated a finetuned-LLM router. We generated synthetic labeled data using the LLM-as-a-judge method to train the model, finetuned an LLM classifier using Anyscale's API, and conducted offline evaluation on a standard benchmark-- demonstrating that our model is effective in out-of-domain generalization.
