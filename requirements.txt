@@ -7,3 +7,4 @@ pandas==1.5.3
 scikit_learn==1.5.0
 importlib_resources==6.4.0
 python-dotenv==1.0.1
+ray==2.31.0
