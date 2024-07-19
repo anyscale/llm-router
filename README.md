@@ -48,7 +48,7 @@ In the following sections, we discuss the steps that enable anyone to build a st
 
 3. [**Offline Evaluation**](#offline-eval): Using the public codebase ([RouteLLM](https://github.com/lm-sys/RouteLLM)), we will walk through an offline evaluation on standard benchmarks.
 
-**Time to complete**: Approximately 120 minutes, including time to train on a node with 8xA10 GPUs.
+**Time to complete**: Approximately 120 minutes, including time to train on a node with 8xA100 GPUs.
 
 
 
