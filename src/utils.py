@@ -209,7 +209,7 @@ def balance_dataset(
     balanced_df = pd.concat(sampled_dfs).sample(frac=1, random_state=random_state)
     return balanced_df
 
-
+# DEPRECATED
 def prepare_ft_messages(dataset_df: pd.DataFrame, label_key: str) -> pd.DataFrame:
     """
     Add messages for fine-tuning using the dataset dataframe, system message, and classifier message.
@@ -231,6 +231,37 @@ def prepare_ft_messages(dataset_df: pd.DataFrame, label_key: str) -> pd.DataFram
         ),
         axis=1,
     )
+
+def prepare_ft_messages_multirouter(dataset_df: pd.DataFrame, score_columns: list, model_map: dict) -> pd.DataFrame:
+    """
+    Generate messages that include multiple AI assistant scores in the assistant response.
+    """
+    with open(f"assets/system_ft.txt", "r") as f1, open(f"assets/classifier_ft.txt", "r") as f2:
+        system_message = f1.read()
+        classifier_message = f2.read()
+    
+    system_message = system_message.replace("[model_map]", str(model_map))
+
+    def construct_message(row, model_map=model_map):
+        model_scores = {col: f"[[{row[col]}]]" for col in score_columns if pd.notna(row[col])}
+
+        model_key_list = list(model_map.keys())
+
+        for m in model_key_list:
+            if model_scores[m]:
+                model_scores[f"{model_map[m]}"] = model_scores.pop(m) 
+
+        model_scores_str = str(model_scores).replace("'", '"')  # Ensure proper JSON format
+
+        return to_openai_api_messages(
+            [
+                classifier_message.format(question=row["prompt"]),
+                model_scores_str,
+            ],
+            system_message,
+        )
+
+    return dataset_df.apply(construct_message, axis=1)
 
 
 def inspect_instructions() -> None:

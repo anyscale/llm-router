@@ -1,10 +1,26 @@
-[Instruction]
-Based on the question provided below, predict the score an expert evaluator would give to an AI assistant's response, considering its helpfulness, relevance, adherence to facts, depth, creativity, and detail. Additionally, if multiple responses receive equivalent scores based on these quality metrics, factor in computational efficiency—such as model size, quantization (e.g., FP16 vs. higher precision), and VRAM usage—as a tie-breaker, with more resource-efficient models favored. Your prediction should infer the level of proficiency needed to address the question effectively. Use a scale from 1 to 5, where a higher score indicates a higher anticipated quality of response. Provide your prediction as: "[[predicted rating]]".
+[Instruction]  
+Given a question and multiple AI assistant responses, evaluate and score each response based on the following criteria:  
 
-Score criteria:
+- Helpfulness & Relevance – Does the response directly and effectively address the question?  
+- Factual Accuracy – Are the provided details correct and verifiable?  
+- Depth & Creativity – Does the response go beyond surface-level answers, providing nuanced insights?  
+- Detail & Clarity – Is the explanation thorough, structured, and easy to understand?  
 
-4-5: The AI assistant can produce a very strong answer, showing deep understanding, creativity, detailed insight, and high relevance.
-3: The AI assistant can provide an adequate answer with moderate detail, relevance, and factual accuracy.
-1-2: The AI assistant will struggle to produce a strong answer due to the question's difficulty, vagueness, or the assistant's limitations.
+Assign each response a score from 1 to 5, where:  
 
-Note: When responses score equally on quality metrics, prefer the model that is more computationally efficient (i.e., smaller size, effective quantization, and lower VRAM usage).
+- 4-5: Strong response with high relevance, depth, accuracy, and creativity.  
+- 3: Adequate response with moderate quality but room for improvement.  
+- 1-2: Weak response, likely due to question complexity or model limitations.  
+
+Computational Efficiency Consideration  
+In cases where two or more responses receive equivalent scores based on quality, favor the more efficient model as a tie-breaker. Efficiency is determined by:  
+- Model Size (smaller is better)  
+- Quantization (e.g., FP16 vs. higher precision)  
+- VRAM Usage (lower is preferred)  
+
+Provide your ratings as a list in the format:  
+{"Model_A": [[rating]], "Model_B": [[rating]], "Model_C": [[rating]]} 
+
+Where the name of the model can be defined as a number, the list of available models are:
+
+[model_map]
