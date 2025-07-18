@@ -3,7 +3,7 @@
 ## TLDR
 1. We introduce a framework for training state-of-the-art *LLM routers*, systems that dynamically direct queries to either high-quality closed LLMs or cost-effective open-source LLMs, based on query complexity, optimizing both response quality and cost.
 
-2. This tutorial provides an in-depth guide on building an LLM router *based on a causal-LLM classifier*, starting with generating labeled data, finetuning an LLM-based classifier with Anyscale's API, and finally running offline evaluations.
+2. This tutorial provides an in-depth guide on building an LLM router *based on a causal-LLM classifier*, starting with generating labeled data, fine tuning an LLM-based classifier with Anyscale's API, and finally running offline evaluations.
 
 3. In collaboration with the Berkeley LMSys group, we release an [arXiv paper](https://arxiv.org/pdf/2406.18665) presenting extensive evaluations of this model along with other models. Overall, our LLM Routers can achieve the same performance as our baselines with up to a 70% cost reduction on MT Bench, a 30% cost reduction on MMLU, and a 40% cost reduction on GSM8K.
 
@@ -44,7 +44,7 @@ In the following sections, we discuss the steps that enable anyone to build a st
 
 1. [**Prepare Labeled Data**](#generate-labeled-data): The foundation of a robust LLM router is high-quality labeled data. In this section, we'll guide you through preparing this training data.
 
-2. [**Finetune a Router Model**](#finetune-router-model): We demonstrate how to finetune a causal-LLM classifier using Anyscale's finetuning API, transforming it into an effective LLM router.
+2. [**Finetune a Router Model**](#finetune-router-model): We demonstrate how to finetune a causal-LLM classifier using Anyscale's fine tuning API, transforming it into an effective LLM router.
 
 3. [**Offline Evaluation**](#offline-eval): Using the public codebase ([RouteLLM](https://github.com/lm-sys/RouteLLM)), we will walk through an offline evaluation on standard benchmarks.
 
@@ -331,7 +331,7 @@ inspect_llm_judge_queries(dataset_df)
     
     [Question]
     Q: You are provided with an "Event", "Intent" related to PersonX. Guess a reaction/reaction of PersonX about the given event and their intention.
-    Event:PersonX uses ___ in class. Intent: 1) to use his prefered writing implement
+    Event:PersonX uses ___ in class. Intent: 1) to use his preferred writing implement
     A:
     
     [Reference Answer]
@@ -560,7 +560,7 @@ In this section, we will explain how to finetune a causal LLM classifier to be a
 
 
 ## 2.1 Data Preparation
-We will discuss a few preprocessing steps to prepare the data for finetuning an LLM classifier.
+We will discuss a few preprocessing steps to prepare the data for fine tuning an LLM classifier.
 
 ### Task Instructions
 We use the instruction-following framework to finetune an LLM as a router. The task instructions guide the model to predict the score label for a given query. They ensure the model understands the evaluation criteria and can accurately assess the query's complexity and expected response quality.
@@ -589,7 +589,7 @@ inspect_instructions()
 
 ### API Data Format
 
-To finetune the model, we must format the data to be compatible with [Anyscale's finetuning API](https://docs.anyscale.com/endpoints/fine-tuning/dataset-prep).
+To finetune the model, we must format the data to be compatible with [Anyscale's fine tuning API](https://docs.anyscale.com/endpoints/fine-tuning/dataset-prep).
 
 
 
@@ -629,7 +629,7 @@ print(f"Train size: {len(balanced_train_df)}")
 
 ### Subsample and Store Data
 
-To expedite the time to run this tutorial, we will subsample 1,000 examples for training. We'll store the data in JSONL format to prepare for launching the finetuning job in the next section.
+To expedite the time to run this tutorial, we will subsample 1,000 examples for training. We'll store the data in JSONL format to prepare for launching the fine tuning job in the next section.
 
 
 ```python
@@ -642,14 +642,14 @@ subsampled_df.to_json(output_file, orient="records", lines=True)
 
 ## 2.2 Fine-tune with Anyscale API
 
-We will run a fine-tuning job using Anyscale's LLM finetuning API as an isolated job, similar to our [end-to-end LLM workflows guide](https://github.com/anyscale/e2e-llm-workflows?tab=readme-ov-file#fine-tuning-1).
+We will run a fine-tuning job using Anyscale's LLM fine tuning API as an isolated job, similar to our [end-to-end LLM workflows guide](https://github.com/anyscale/e2e-llm-workflows?tab=readme-ov-file#fine-tuning-1).
 
-For this tutorial, we will perform full-parameter finetuning of Llama3-8B on the same 1,000 samples we showed earlier to debug the training dynamics and ensure the model can fit the training set. Below, we present the training and job configurations before submitting the training job.
+For this tutorial, we will perform full-parameter fine tuning of Llama3-8B on the same 1,000 samples we showed earlier to debug the training dynamics and ensure the model can fit the training set. Below, we present the training and job configurations before submitting the training job.
 
 
 
 ```python
-# View the full-param finetuning configuration for llama-3-8B
+# View the full-param fine tuning configuration for llama-3-8B
 !cat configs/ft_config_a10.yaml
 ```
 
@@ -832,7 +832,7 @@ To optimize inference speed, we can append the header tokens `<|start_header_id|
 ### Benchmark Evaluation
 We will use the RouteLLM evaluation framework to measure the performance of our router against a random router on GSM8K. 
 We report the percentage of calls the router needs to send to GPT-4 in order to achieve `20%`, `50%` and `80%` of GPT-4 performance, along with area under curve. 
-See our [paper](https://arxiv.org/pdf/2406.18665) for more details on the evalaution metrics.
+See our [paper](https://arxiv.org/pdf/2406.18665) for more details on the evaluation metrics.
 
 
 ```python
@@ -876,4 +876,4 @@ display(Image(filename=image_path))
 This plot illustrates that as we relax the cost constraints (i.e., increase the percentage of GPT-4 calls), the performance improves. While the performance of a random router improves linearly with cost, our router achieves significantly better results at each cost level.
 
 # Conclusion
-In this tutorial, we have successfully built and evaluated a finetuned-LLM router. We generated synthetic labeled data using the LLM-as-a-judge method to train the model, finetuned an LLM classifier using Anyscale's API, and conducted offline evaluation on a standard benchmark-- demonstrating that our model is effective in out-of-domain generalization.
+In this tutorial, we have successfully built and evaluated a finetuned-LLM router. We generated synthetic labeled data using the LLM-as-a-judge method to train the model, fine tuned an LLM classifier using Anyscale's API, and conducted offline evaluation on a standard benchmark-- demonstrating that our model is effective in out-of-domain generalization.
